@@ -40,3 +40,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# evm
+evm/out
+evm/cache
+evm/broadcast
+evm/node_modules
+evm/.env
