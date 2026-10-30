@@ -10,14 +10,21 @@
   },
   "scripts": {
     "escrow": "node --env-file-if-exists=.env src/cli/escrow.ts",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "verify-server": "node --env-file-if-exists=.env src/verify/server.ts",
+    "pay-verify": "node --env-file-if-exists=.env src/cli/pay-verify.ts"
   },
   "dependencies": {
     "@evolution-sdk/evolution": "0.5.13",
-    "@x402/cardano": "2.26.0"
+    "@x402/cardano": "2.26.0",
+    "@x402/core": "2.26.0",
+    "@x402/express": "2.26.0",
+    "@x402/fetch": "2.26.0",
+    "express": "4.22.3"
   },
   "devDependencies": {
-    "@types/node": "24.10.1",
-    "typescript": "5.9.3"
+    "@types/express": "4.17.25",
+    "@types/node": "24.19.1",
+    "typescript": "6.0.3"
   }
 }

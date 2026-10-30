@@ -111,6 +111,13 @@ compare with the hard-coded signer; request DOIs as `doi:<lowercase doi>`.
    Sepolia), runs the off-chain pre-check, and returns the signed proof JSON above. One paid call on preprod and its
    transaction hash already qualifies for the Cardano track. This is "citation verification as a paid service" for any
    agent.
+   **Done** (`cardano/src/verify/`, `npm run verify-server` + `npm run pay-verify -- <doi>`): two paid calls on preprod,
+   the agent signing server-side — valid `10.1038/nature14539`
+   ([`48eaf21b…`](https://preprod.cardanoscan.io/transaction/48eaf21bb25e9831206537ff78939e84400015168e9c93e2a8227cbfe029a1b5))
+   and retracted `10.1038/nature00870`
+   ([`af8f5f3c…`](https://preprod.cardanoscan.io/transaction/af8f5f3c0057f5cb8cd17bfd93e43e68b70681ddc98368c5d860c4948aa5d919)).
+   It uses `fetchSignedWork` / `verifySignedResponse` from `api3evm/`; without `PAYER_PRIVATE_KEY` it replays the
+   signed fixtures instead of paying aUSD.
 2. **Masumi research agent.** Follow https://github.com/masumi-network/tum-hackathon-quickstart (Node 24, Sokosumi CLI
    1.0.4). Put the research instructions in `agent/instructions.md`: given a topic and N, write a summary citing at
    least N DOIs, and return the report plus the DOI list. First run one unpaid Task, then enable
