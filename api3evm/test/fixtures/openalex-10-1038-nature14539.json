@@ -1,0 +1,7 @@
+{
+  "airnode": "0xc5E9B3263ac154d7694Db5F3894997DaaB4F464c",
+  "requestHash": "0x470e125745135aef9bbb917d8204c7da681e0e28fce335bbb2b099b80c6da3bf",
+  "timestamp": "1793358351",
+  "data": "{\"doi\":\"https://doi.org/10.1038/nature14539\",\"is_retracted\":false,\"title\":\"Deep learning\"}",
+  "signature": "0x74f820bb7e02c3afb514a3b8490a8a3f06c5fc69534524e9e4b456501bdc66455fc590e221dcfb6bb2f9e1b7f6a82d4352f706a0b91a1bdbf1c6753570e0f0fc1c"
+}
