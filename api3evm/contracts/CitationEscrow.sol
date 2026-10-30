@@ -79,7 +79,17 @@ contract CitationEscrow {
 
   // --------------------------- step 2
   /// @notice The request hash that a signed getWork response for this DOI must carry
-  function requestHashFor(string memory doi) public pure returns (bytes32) {}
+  function requestHashFor(string memory doi) public pure returns (bytes32) {
+    return keccak256(
+      bytes(
+        string.concat(
+          '["getWork",[["id","doi:',
+          doi,
+          '"]],[["doi","/doi"],["is_retracted","/is_retracted"],["title","/title"]]]'
+        )
+      )
+    );
+  }
 
   // --------------------------- step 3
   function createJob(address researcher, uint256 minSources, uint64 deadline, uint256 amount) external returns (uint256 jobId) {}
@@ -98,6 +108,6 @@ contract CitationEscrow {
   function doisOf(uint256 jobId) external view returns (string[] memory) {
       return _dois[jobId];
   }
-
+ 
   
 }
