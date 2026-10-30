@@ -59,14 +59,18 @@ export const NETWORKS: Record<NetworkId, NetworkConfig> = {
       envVar: "BLOCKFROST_PROJECT_ID",
       url: process.env.NEXT_PUBLIC_CARDANO_RPC_URL ?? "https://cardano-preprod.blockfrost.io/api/v0",
     },
-    oracle: { label: "ADA/USD reference", source: "reference feed (placeholder)" },
-    contracts: {},
+    oracle: { label: "OpenAlex · 10.1038/nature14539", source: "api.openalex.org (signed by the API3 Airnode at proof time)" },
+    contracts: {
+      // Masumi V2 escrow (vested_pay) on preprod — where a job's ADA is locked.
+      masumiEscrow: "addr_test1wzs4e6wc95hkwezlccjw9mdvq0r0rsgx6zk34avptga3ftgn37w4g",
+    },
     sampleRecipient:
       process.env.NEXT_PUBLIC_RECIPIENT_CARDANO ??
       "addr_test1PLACEHOLDER_replace_at_kickoff_with_a_real_preprod_address",
+    // A real preprod payment to the x402 citation verifier (cardano/README.md), replayed by the fallback.
     sampleTxHash:
       process.env.NEXT_PUBLIC_FALLBACK_TX_CARDANO ??
-      "0000000000000000000000000000000000000000000000000000000000000001",
+      "48eaf21bb25e9831206537ff78939e84400015168e9c93e2a8227cbfe029a1b5",
   },
   "bsv-testnet": {
     id: "bsv-testnet",
@@ -145,7 +149,7 @@ export const DEFAULT_NETWORK: NetworkId = isNetworkId(process.env.NEXT_PUBLIC_DE
 export const DEMO_FALLBACK_DEFAULT: boolean = process.env.NEXT_PUBLIC_DEMO_FALLBACK !== "false";
 
 /** Title shown in the top nav. Generic until kickoff (directive §2A). */
-export const PROJECT_TITLE: string = process.env.NEXT_PUBLIC_PROJECT_TITLE ?? "Agent Command Center";
+export const PROJECT_TITLE: string = process.env.NEXT_PUBLIC_PROJECT_TITLE ?? "Citation Escrow · Agentic Research Payments";
 
 /** Hard ceiling on what the agent may move in one action (in the network's base currency). */
 export const AGENT_MAX_AMOUNT: string = process.env.NEXT_PUBLIC_AGENT_MAX_AMOUNT ?? "1";

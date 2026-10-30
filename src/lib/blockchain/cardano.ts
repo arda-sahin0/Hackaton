@@ -1,23 +1,11 @@
 /**
- * Cardano Preprod adapter — structured for MeshJS (or Lucid).
+ * Cardano Preprod adapter — Blockfrost-backed reads (balance, tx status) and the free OpenAlex
+ * citation check as the "data feed". Signing happens server-side in the standalone `cardano/`
+ * package (Evolution SDK + x402), which the citation-escrow workflow drives as a child process;
+ * this adapter never holds a key. Every call still runs through the demo fallback (§5.3).
  *
- * ── KICKOFF INJECTION RECIPE (≈15 min) ────────────────────────────────────────────────────
- *   npm install @meshsdk/core @meshsdk/react
- *   .env.local: BLOCKFROST_PROJECT_ID=<preprod project id>
- *
- *   connectWallet():   const wallet = await BrowserWallet.enable("eternl");   // or nami / lace
- *                      const address = (await wallet.getUsedAddresses())[0];
- *   getBalance():      const lovelace = await wallet.getLovelace();           // -> ADA = /1e6
- *   executeAgentTransaction():
- *                      const tx = new Transaction({ initiator: wallet })
- *                        .sendLovelace(payload.to, String(Math.round(Number(payload.amount) * 1e6)));
- *                      const unsigned = await tx.build();
- *                      const signed = await wallet.signTx(unsigned);
- *                      const txHash = await wallet.submitTx(signed);
- *   getTransactionStatus(): poll Blockfrost `GET /txs/{hash}` (200 => verified).
- *   Server-side signing alternative: MeshWallet with a mnemonic from a gitignored env var.
- * ──────────────────────────────────────────────────────────────────────────────────────────
- * Until injected, every live path throws NotWiredError and the demo fallback answers.
+ *   BLOCKFROST_PROJECT_ID     preprod project id (server-side)
+ *   CARDANO_WATCH_ADDRESS     address shown in the balance card (default: the Masumi escrow)
  */
 import { getNetwork, type NetworkId } from "@/config/chains";
 import { explorerTxUrl } from "@/lib/explorer";
@@ -32,6 +20,8 @@ import type {
   TxStatus,
   WalletConnection,
 } from "./types";
+
+const DEMO_DOI = "10.1038/nature14539";
 
 export class CardanoAdapter implements BlockchainAdapter {
   readonly network: NetworkId = "cardano-preprod";
@@ -49,14 +39,24 @@ export class CardanoAdapter implements BlockchainAdapter {
     };
   }
 
+  private async blockfrost<T>(path: string): Promise<{ status: number; body: T | null }> {
+    const projectId = process.env.BLOCKFROST_PROJECT_ID?.trim();
+    if (!projectId) throw new NotWiredError("Blockfrost (BLOCKFROST_PROJECT_ID)");
+    const base = this.cfg.rpc.url ?? "https://cardano-preprod.blockfrost.io/api/v0";
+    const res = await fetch(`${base}${path}`, { headers: { project_id: projectId }, cache: "no-store" });
+    if (res.status === 404) return { status: 404, body: null };
+    if (!res.ok) throw new Error(`Blockfrost ${path} returned ${res.status}`);
+    return { status: res.status, body: (await res.json()) as T };
+  }
+
   connectWallet(): Promise<WalletConnection> {
     return withDemoFallback(
       async () => {
-        // INJECT: BrowserWallet.enable(...) + getUsedAddresses()
-        throw new NotWiredError("Cardano wallet connect (MeshJS)");
+        // Browser wallets (Eternl) are not wired in the dashboard; the agents sign server-side.
+        throw new NotWiredError("Cardano browser wallet connect");
       },
       () => ({
-        address: this.cfg.sampleRecipient,
+        address: this.cfg.contracts.masumiEscrow ?? this.cfg.sampleRecipient,
         network: this.network,
         provider: "demo",
         simulated: true,
@@ -65,11 +65,20 @@ export class CardanoAdapter implements BlockchainAdapter {
     );
   }
 
-  getBalance(): Promise<Balance> {
-    return withDemoFallback(
+  getBalance(address?: string): Promise<Balance> {
+    const watch = address?.trim() || process.env.CARDANO_WATCH_ADDRESS?.trim() || this.cfg.contracts.masumiEscrow;
+    return withDemoFallback<Balance>(
       async () => {
-        // INJECT: wallet.getLovelace() or Blockfrost /addresses/{address}
-        throw new NotWiredError("Cardano balance read");
+        if (!watch?.startsWith("addr_test1")) throw new NotWiredError("Cardano balance (no preprod address)");
+        const { body } = await this.blockfrost<{ amount: Array<{ unit: string; quantity: string }> }>(`/addresses/${watch}`);
+        const lovelace = body?.amount.find((a) => a.unit === "lovelace")?.quantity ?? "0";
+        return {
+          amount: (Number(lovelace) / 1e6).toFixed(6),
+          symbol: this.cfg.currency.symbol,
+          network: this.network,
+          simulated: false,
+          fetchedAt: new Date().toISOString(),
+        };
       },
       () => ({
         amount: jitter(1250).toFixed(6),
@@ -83,16 +92,23 @@ export class CardanoAdapter implements BlockchainAdapter {
   }
 
   readOracle(): Promise<OracleReading> {
-    return withDemoFallback(
+    return withDemoFallback<OracleReading>(
       async () => {
-        // INJECT: any verifiable reference feed (e.g. an on-chain oracle datum or API3 on EVM)
-        throw new NotWiredError("Cardano oracle read");
+        const res = await fetch(`https://api.openalex.org/works/doi:${DEMO_DOI}?select=doi,is_retracted,title`, { cache: "no-store" });
+        if (!res.ok) throw new Error(`OpenAlex returned ${res.status}`);
+        const work = (await res.json()) as { is_retracted: boolean; title: string };
+        return {
+          label: `OpenAlex · ${DEMO_DOI} · "${work.title}"`,
+          value: work.is_retracted ? "retracted" : "not retracted",
+          source: this.cfg.oracle.source,
+          simulated: false,
+          fetchedAt: new Date().toISOString(),
+        };
       },
       () => ({
         label: this.cfg.oracle.label,
-        value: jitter(0.42, 0.01).toFixed(4),
-        unit: "USD",
-        source: this.cfg.oracle.source,
+        value: "not retracted",
+        source: `${this.cfg.oracle.source} · replay`,
         simulated: true,
         fetchedAt: new Date().toISOString(),
       }),
@@ -103,8 +119,9 @@ export class CardanoAdapter implements BlockchainAdapter {
   executeAgentTransaction(payload: AgentTxPayload): Promise<TxReceipt> {
     return withDemoFallback(
       async () => {
-        // INJECT: Transaction.sendLovelace -> build -> signTx -> submitTx (see header)
-        throw new NotWiredError("Cardano transaction submit");
+        // The generic happy path has no server-side signer in the dashboard; the citation-escrow
+        // workflow produces its receipts through the cardano/ package instead.
+        throw new NotWiredError("Cardano transaction submit from the dashboard");
       },
       () => {
         const txHash = this.cfg.sampleTxHash;
@@ -126,8 +143,8 @@ export class CardanoAdapter implements BlockchainAdapter {
   getTransactionStatus(txHash: string): Promise<TxStatus> {
     return withDemoFallback(
       async () => {
-        // INJECT: Blockfrost GET /txs/{hash}
-        throw new NotWiredError("Cardano tx status");
+        const { status } = await this.blockfrost<{ hash: string }>(`/txs/${txHash}`);
+        return status === 404 ? ("pending" as const) : ("verified" as const);
       },
       () => {
         // First poll: pending; second: verified — gives the UI its Pending -> Verified transition.
