@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Standalone Node packages with their own tsconfig.
+    "cardano/**",
+    "api3evm/**",
   ]),
 ]);
 
