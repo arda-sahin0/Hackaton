@@ -11,7 +11,8 @@
   "scripts": {
     "escrow": "node --env-file-if-exists=.env src/cli/escrow.ts",
     "typecheck": "tsc",
-    "hire": "node --env-file-if-exists=.env src/cli/hire.ts"
+    "hire": "node --env-file-if-exists=.env src/cli/hire.ts",
+    "wallet": "node --env-file-if-exists=.env src/cli/wallet.ts"
   },
   "dependencies": {
     "@evolution-sdk/evolution": "0.5.13",

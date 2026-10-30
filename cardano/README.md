@@ -18,8 +18,10 @@ Node 22.18+ (runs TypeScript directly, no build step).
 ```sh
 cd cardano
 npm install
-cp .env.example .env   # fill in BLOCKFROST_PROJECT_ID, BUYER_MNEMONIC, SELLER_MNEMONIC
+cp .env.example .env   # fill in BLOCKFROST_PROJECT_ID, then the wallet seeds (below)
 npm run typecheck
+npm run wallet -- new buyer          # writes a fresh 24-word seed to .local/wallet-buyer.txt, prints the address
+npm run wallet -- show BUYER_MNEMONIC   # address, tADA balance and Cardanoscan link of a seed in .env
 ```
 
 Use fresh preprod test wallets only. `.env` is gitignored; never commit it.
