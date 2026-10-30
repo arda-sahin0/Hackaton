@@ -130,6 +130,10 @@ compare with the hard-coded signer; request DOIs as `doi:<lowercase doi>`.
    escrow to `Disputed`; the honest seller accepts (`authorize`) and the hirer withdraws (`withdraw`) — three tx
    hashes in ~3 min. A silent seller leaves it to Masumi's admin keys after `externalDisputeUnlockTime`. Proven tx
    hashes: [`cardano/README.md`](../cardano/README.md).
+   **Hirer loop done** (`cardano/src/hirer/`, `npm run hire`): hire via x402 escrow lock (signed server-side) → watch
+   for the result hash → check the delivered report against it → verdict → refund or let it pay out, streamed as
+   tagged events for the dashboard. Proven end to end in 2.5 min. The verdict source is pluggable; still to add:
+   read `isFullyProven(jobId)` from `CitationEscrow` once it is deployed (send us the address).
 
 ## API3 milestones, in order
 
