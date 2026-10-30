@@ -28,9 +28,6 @@ export async function POST(request: Request) {
     objective: typeof body.objective === "string" ? body.objective.slice(0, 500) : undefined,
     demoFallback: parseBool(body.demoFallback) ?? DEMO_FALLBACK_DEFAULT,
     walletAddress: typeof body.walletAddress === "string" ? body.walletAddress.slice(0, 256) : undefined,
-    workflow: body.workflow === "generic" || body.workflow === "citation-escrow" ? body.workflow : undefined,
-    cheat: body.cheat === "retracted" || body.cheat === "tamper" ? body.cheat : "none",
-    minSources: Number.isInteger(body.minSources) && (body.minSources as number) > 0 ? Math.min(body.minSources as number, 10) : undefined,
   };
 
   const runId = `run-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;

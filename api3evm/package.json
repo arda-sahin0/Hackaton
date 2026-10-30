@@ -11,7 +11,6 @@
   },
   "scripts": {
     "fetch-response": "node --env-file-if-exists=.env src/fetch-response.ts",
-    "fetch-work": "node --env-file-if-exists=.env src/fetch-work.ts",
     "prettier:check": "prettier --check .",
     "prettier:fix": "prettier --write .",
     "request-hash": "node src/request-hash.ts",

@@ -1,67 +1,21 @@
 /**
- * How the hirer decides whether a delivered report earned its payment. The
- * loop only needs a pass/fail with reasons; where it comes from is pluggable.
+ * How the buyer decides whether a delivered result earned its payment. The
+ * loop only needs a pass/fail with reasons; where it comes from is pluggable
+ * (plug the use-case's acceptance check in here).
  *
  *   fixed      a forced verdict, for testing the payout and refund paths
- *   citations  pay the /verify service for every DOI in the report; fail on a
- *              retracted or unprovable source, or on fewer than `minSources`
- *   proofs     the report carries the research agent's `## Verification` block
- *              (cardano/src/research/agent.ts): recover every Airnode signature
- *              ourselves and read CitationEscrow.isFullyProven when deployed
  */
-import { payOnceWithRetry, settlementTx } from "../x402-client.ts";
 import type { Emit } from "./hirer.ts";
-import { checkProofs, parseVerification } from "./proof-check.ts";
 
 export interface Verdict {
   verdict: "pass" | "fail";
   reasons: string[];
-  /** Cardano transactions this decision paid for (verification fees). */
+  /** Cardano transactions this decision paid for (e.g. paid checks). */
   paidTxs: string[];
 }
-export type VerdictSource = (report: string, emit: Emit) => Promise<Verdict>;
+export type VerdictSource = (result: string, emit: Emit) => Promise<Verdict>;
 
-export const fixedVerdict = (verdict: "pass" | "fail"): VerdictSource => async (_report, emit) => {
+export const fixedVerdict = (verdict: "pass" | "fail"): VerdictSource => async (_result, emit) => {
   emit("TOOL", `Forced verdict for this test run: ${verdict.toUpperCase()}`);
   return { verdict, reasons: [`forced ${verdict}`], paidTxs: [] };
-};
-
-/** DOIs in free text (Crossref's recommended pattern, trailing punctuation trimmed). */
-export const extractDois = (text: string) =>
-  [...new Set([...text.matchAll(/\b10\.\d{4,9}\/[-._;()/:a-z0-9]+/gi)].map(m => m[0].replace(/[.,;:)]+$/, "").toLowerCase()))];
-
-export function citationVerdict(opts: { verifierUrl: string; payingFetch: typeof fetch; minSources: number }): VerdictSource {
-  return async (report, emit) => {
-    const dois = extractDois(report);
-    emit("TOOL", `Report cites ${dois.length} DOI(s); ${opts.minSources} required`);
-    const reasons: string[] = [];
-    const paidTxs: string[] = [];
-    if (dois.length < opts.minSources) reasons.push(`only ${dois.length} DOI(s) cited, ${opts.minSources} required`);
-    for (const doi of dois) {
-      const url = `${opts.verifierUrl.replace(/\/+$/, "")}/verify?doi=${encodeURIComponent(doi)}`;
-      emit("TOOL", `Paying the citation verifier for ${doi} …`);
-      const response = await payOnceWithRetry(opts.payingFetch, url, undefined, () => emit("TOOL", "Payment not settled; retrying once"));
-      const body = (await response.json().catch(() => ({}))) as { verdict?: string; work?: { title?: string }; error?: string };
-      const tx = settlementTx(response);
-      if (tx) paidTxs.push(tx);
-      if (!response.ok) {
-        reasons.push(`${doi}: no signed proof (${body.error ?? `HTTP ${response.status}`})`);
-        emit("TOOL", `${doi} → UNPROVEN (${body.error ?? response.status})`, tx);
-        continue;
-      }
-      emit("ORACLE", `${doi} → ${String(body.verdict).toUpperCase()} — "${body.work?.title ?? "?"}" (API3 signature checked off-chain)`, tx);
-      if (body.verdict !== "valid") reasons.push(`${doi}: ${body.verdict}`);
-    }
-    return { verdict: reasons.length ? "fail" : "pass", reasons, paidTxs };
-  };
-}
-
-/** The verdict for reports produced by our research agent: no fee, the proofs travel with the report. */
-export const signedProofVerdict = (minSources: number): VerdictSource => async (report, emit) => {
-  const v = parseVerification(report);
-  if (!v) return { verdict: "fail", reasons: ["report carries no verification block"], paidTxs: [] };
-  emit("TOOL", `Report cites ${v.sources.length} DOI(s) with signed proofs; ${Math.max(minSources, v.minSources)} required; re-checking every signature`);
-  // checkProofs logs VERIFY lines; the dashboard terminal shows verification steps as TOOL.
-  const check = await checkProofs({ ...v, minSources: Math.max(minSources, v.minSources) }, (tag, message) => emit(tag === "VERIFY" ? "TOOL" : tag, message));
-  return { verdict: check.ok ? "pass" : "fail", reasons: check.reasons, paidTxs: [] };
 };

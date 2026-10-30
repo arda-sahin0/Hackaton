@@ -5,7 +5,7 @@
  *               by locking the price in Masumi's escrow, signed server-side
  *   2. watch    follow the escrow until the agent puts its result hash on chain;
  *               fetch the result and check it matches that hash (MIP-004)
- *   3. decide   ask a VerdictSource whether the report earned its payment
+ *   3. decide   ask a VerdictSource whether the result earned its payment
  *   4. act      pass → do nothing, the seller collects after unlock_time
  *               fail → request a refund before unlock_time; once the seller
  *               authorizes it, withdraw the refund
@@ -61,7 +61,7 @@ export async function runHirerJob(opts: HireOptions): Promise<HireResult> {
   // ---- 1. hire
   const identifier = randomBytes(10).toString("hex");
   const body = { identifier_from_purchaser: identifier, input_data: { text: opts.task } };
-  emit("AGENT", `Hiring research agent at ${agentBase(opts.offerUrl)} — task: "${opts.task.slice(0, 80)}"`);
+  emit("AGENT", `Hiring agent at ${agentBase(opts.offerUrl)} — task: "${opts.task.slice(0, 80)}"`);
   emit("SIGNING", "Answering the agent's 402 offer: locking the price in Masumi escrow (signed server-side)");
   const response = await opts.payingFetch(opts.offerUrl, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
@@ -109,8 +109,8 @@ export async function runHirerJob(opts: HireOptions): Promise<HireResult> {
   const onChain = escrow.datum.resultHash;
   const matches = sha256(`${identifier};${report}`) === onChain;
   emit(matches ? "VERIFIED" : "ERROR", matches
-    ? "Delivered report matches the result hash on chain (MIP-004)"
-    : "Delivered report does NOT match the on-chain result hash — treating as failed delivery");
+    ? "Delivered result matches the result hash on chain (MIP-004)"
+    : "Delivered result does NOT match the on-chain result hash — treating as failed delivery");
 
   // ---- 3. decide
   const decision = matches ? await opts.verdict(report, emit) : { verdict: "fail" as const, reasons: ["result hash mismatch"], paidTxs: [] };
@@ -149,7 +149,7 @@ export async function runHirerJob(opts: HireOptions): Promise<HireResult> {
       const withdrawn = await party.withdrawRefund(now);
       record("refund withdrawn", withdrawn.txHash);
       emit("VERIFIED", "Refund back in the hirer's wallet — escrow closed", withdrawn.txHash);
-      emit("DONE", "Rejected report: payment refunded");
+      emit("DONE", "Rejected result: payment refunded");
       return { jobId: job.id, lockTx, outcome: "refunded", txs };
     }
     await sleep(pollMs);

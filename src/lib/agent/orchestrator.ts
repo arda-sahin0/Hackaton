@@ -3,7 +3,6 @@ import type { AgentEventBus } from "./events";
 import { createLlmClient } from "./llm";
 import type { AgentRunContext, AgentRunInput, AgentRunResult, LlmClient, WorkflowStep } from "./types";
 import { agenticPaymentWorkflow } from "./workflows/agentic-payment";
-import { citationEscrowWorkflow } from "./workflows/citation-escrow";
 
 export interface RunOptions {
   steps?: WorkflowStep[];
@@ -23,8 +22,7 @@ export async function runAgentWorkflow(
   options: RunOptions = {},
 ): Promise<AgentRunResult> {
   const started = Date.now();
-  const workflow = input.workflow ?? (input.network === "cardano-preprod" ? "citation-escrow" : "generic");
-  const steps = options.steps ?? (workflow === "citation-escrow" ? citationEscrowWorkflow : agenticPaymentWorkflow);
+  const steps = options.steps ?? agenticPaymentWorkflow;
   const adapter = getAdapter(input.network, {
     demoFallback: input.demoFallback,
     onFallback: ({ operation, reason }) => {

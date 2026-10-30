@@ -1,7 +1,0 @@
-{
-  "airnode": "0xc5E9B3263ac154d7694Db5F3894997DaaB4F464c",
-  "requestHash": "0x69f3d2edaaedaa65bee9b2c40540dae0a39d35cf493ad4b43b8a59b92e32fe43",
-  "timestamp": "1793358353",
-  "data": "{\"doi\":\"https://doi.org/10.1038/nature00870\",\"is_retracted\":true,\"title\":\"RETRACTED ARTICLE: Pluripotency of mesenchymal stem cells derived from adult marrow\"}",
-  "signature": "0x4812b43fa6bdf9d3c0b9e1c3559a096abbd0634a5be037b5781c7e793af174f36efa66f1df74187cc2d278043859600d9d97bc2c6cfb50dbea2b85edac4a27281b"
-}

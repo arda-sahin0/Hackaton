@@ -2,7 +2,7 @@
   "name": "cardano-escrow",
   "version": "0.1.0",
   "private": true,
-  "description": "Cardano side of the citation-verified research escrow: Masumi V2 escrow (preprod) — track, refund, withdraw",
+  "description": "Cardano side: Masumi V2 escrow (preprod) — lock, track, pay out or refund, x402 paying client",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -11,12 +11,7 @@
   "scripts": {
     "escrow": "node --env-file-if-exists=.env src/cli/escrow.ts",
     "typecheck": "tsc",
-    "verify-server": "node --env-file-if-exists=.env src/verify/server.ts",
-    "pay-verify": "node --env-file-if-exists=.env src/cli/pay-verify.ts",
-    "hire": "node --env-file-if-exists=.env src/cli/hire.ts",
-    "research": "node --env-file-if-exists=.env src/cli/research.ts",
-    "hirer": "node --env-file-if-exists=.env src/cli/hirer.ts",
-    "service": "node --env-file-if-exists=.env src/service/server.ts"
+    "hire": "node --env-file-if-exists=.env src/cli/hire.ts"
   },
   "dependencies": {
     "@evolution-sdk/evolution": "0.5.13",
