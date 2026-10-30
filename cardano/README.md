@@ -53,6 +53,22 @@ Proofs come from `api3evm/` (run `npx pnpm@11.5.2 install` there once):
 On Windows, stop the server with Ctrl+C in its own terminal; a stopped `npm run` can leave the
 `node` process holding port 4030.
 
+## Hireable on Masumi (x402 escrow) — the same agent as a Masumi seller
+
+`research-agent/setup-masumi-agent.sh` patches the Cardano Foundation's Masumi x402 agent demo
+(sibling clone `../x402-cardano-demo/masumi`) so its job is our pipeline: the buyer's 402 offer locks the price in
+Masumi's escrow, the watcher runs `withProofs` on the brief, puts the result hash on chain (`SubmitResult`), and the
+seller collects after `unlockTime`. The Masumi `blockchainIdentifier` becomes the proofs' `externalRef`.
+
+```sh
+sh research-agent/setup-masumi-agent.sh       # idempotent; then fill ../x402-cardano-demo/masumi/.env
+(cd ../x402-cardano-demo/masumi && npm install && npm run agent)   # http://localhost:8787
+npm run hire -- --task "Deep learning overview. Cite at least 1 DOI." --verdict proofs      # AGENT_OFFER_URL=http://localhost:8787/x402/start_job/ada
+```
+
+Needs a funded `SELLER_MNEMONIC` (~20 tADA) in the agent's `.env`; no registry NFT is needed for the unlisted tADA
+offer. With `RESEARCH_CHEAT=tamper` on the agent the hirer's `--verdict proofs` rejects the job and runs the refund path.
+
 ## Hirer agent — one job end to end
 
 ```sh

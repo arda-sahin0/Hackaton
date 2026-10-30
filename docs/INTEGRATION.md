@@ -149,6 +149,9 @@ compare with the hard-coded signer; request DOIs as `doi:<lowercase doi>`.
    tagged events for the dashboard. Proven end to end in 2.5 min. The verdict source is pluggable; still to add:
    read `isFullyProven(jobId)` from `CitationEscrow` once it is deployed (send us the address).
 
+   **Masumi-native path prepared:** `cardano/research-agent/setup-masumi-agent.sh` turns the CF Masumi x402 agent demo
+   into our seller, so `npm run hire -- --verdict proofs` can lock ADA, get a citation-proven report, check the
+   signatures and pay or refund, all on preprod with no Sokosumi dependency. Waiting on a funded seller mnemonic.
 5. **Dashboard.** Done: the root Next.js app runs the research agent and the hirer as child processes of `cardano/`
    (`src/lib/agent/workflows/citation-escrow.ts`), streams their reasoning into the terminal, lists every Cardano
    transaction in the proof table and confirms it through Blockfrost; the balance card reads the Masumi escrow address
