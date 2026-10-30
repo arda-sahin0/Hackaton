@@ -7,12 +7,13 @@
  *
  *   npm run hirer -- create "<brief>" [minSources]        create, wait, verify, decide
  *   npm run hirer -- check  <taskId> [lockTxHash]        re-evaluate; with a lock tx, act on it
+ *   npm run hirer -- verify <resultFile> [lockTxHash]    re-check a saved result (no Sokosumi needed)
  *
  * Every decision is appended as an orchestrator event to .local/hirer-events.jsonl
  * (what the dashboard terminal streams) and printed as [LEVEL] lines.
  */
 import { execFile } from "node:child_process";
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { promisify } from "node:util";
 import { verifySignedResponse, type SignedResponse } from "../../../api3evm/src/airnode-v2.ts";
 import { deriveWorkRequestHash, OPENALEX_AIRNODE_V2_ADDRESS, type SignedWork } from "../../../api3evm/src/openalex.ts";
@@ -115,9 +116,15 @@ async function requestRefund(lockTxHash: string, reason: string) {
 }
 
 const [command, arg, arg2] = process.argv.slice(2);
-if (!COWORKER_ID || !ORG_SLUG) throw new Error("Set COWORKER_ID and SOKOSUMI_ORGANIZATION_SLUG (cardano/.env or the quickstart .env).");
+if (command !== "verify" && (!COWORKER_ID || !ORG_SLUG)) throw new Error("Set COWORKER_ID and SOKOSUMI_ORGANIZATION_SLUG (cardano/.env or the quickstart .env).");
 
-if (command === "create") {
+if (command === "verify" && arg) {
+  const result = readFileSync(arg, "utf8");
+  const label = parseVerification(result)?.externalRef ?? arg;
+  const decision = await decide(label, result);
+  if (decision === "refund" && arg2) await requestRefund(arg2, `verifier: result not fully proven`);
+  emit("DONE", `${decision} — ${label}`);
+} else if (command === "create") {
   const brief = arg ?? "Write a short literature summary on deep learning for engineers.";
   const minSources = Number(arg2 ?? 1);
   const description = `${brief} Cite at least ${minSources} DOI${minSources === 1 ? "" : "s"}.`;
@@ -144,6 +151,6 @@ if (command === "create") {
   if (decision === "refund" && arg2) await requestRefund(arg2, `verifier: task ${arg} not fully proven`);
   emit("DONE", `${decision} — task ${arg}`);
 } else {
-  console.log('Usage: npm run hirer -- create "<brief>" [minSources] | check <taskId> [lockTxHash]');
+  console.log('Usage: npm run hirer -- create "<brief>" [minSources] | check <taskId> [lockTxHash] | verify <resultFile> [lockTxHash]');
   process.exit(1);
 }

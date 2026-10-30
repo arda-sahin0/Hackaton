@@ -10,7 +10,7 @@ import { AgentTerminal } from "@/components/terminal/agent-terminal";
 import { DEFAULT_NETWORK, DEMO_FALLBACK_DEFAULT, NETWORKS, type NetworkId } from "@/config/chains";
 import { useAgentStream } from "@/hooks/use-agent-stream";
 import { formatEvent } from "@/lib/agent/format";
-import type { AgentEvent } from "@/lib/agent/types";
+import type { AgentEvent, SellerMode } from "@/lib/agent/types";
 import type { Balance, OracleReading, TxReceipt, TxStatus, WalletConnection } from "@/lib/blockchain/types";
 
 interface StateResponse {
@@ -28,6 +28,8 @@ export function CommandCenter() {
   const [oracle, setOracle] = useState<OracleReading | null>(null);
   const [rows, setRows] = useState<ActivityRow[]>([]);
   const [lastStep, setLastStep] = useState<string | null>(null);
+  const [seller, setSeller] = useState<SellerMode>("none");
+  const [minSources, setMinSources] = useState(1);
 
   const onEvent = useCallback((event: AgentEvent) => {
     setLastStep(formatEvent(event));
@@ -95,7 +97,15 @@ export function CommandCenter() {
   };
 
   const trigger = () => {
-    void start({ network, objective, demoFallback, walletAddress: wallet?.address });
+    void start({
+      network,
+      objective,
+      demoFallback,
+      walletAddress: wallet?.address,
+      workflow: network === "cardano-preprod" ? "citation-escrow" : "generic",
+      cheat: seller,
+      minSources,
+    });
   };
 
   const handleReset = () => {
@@ -127,6 +137,10 @@ export function CommandCenter() {
               status={status}
               onTrigger={trigger}
               onReset={handleReset}
+              seller={seller}
+              onSellerChange={setSeller}
+              minSources={minSources}
+              onMinSourcesChange={setMinSources}
             />
           </div>
           <AgentTerminal events={events} status={status} onClear={handleReset} />
