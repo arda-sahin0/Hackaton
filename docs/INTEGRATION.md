@@ -122,9 +122,23 @@ compare with the hard-coded signer; request DOIs as `doi:<lowercase doi>`.
    1.0.4). Put the research instructions in `agent/instructions.md`: given a topic and N, write a summary citing at
    least N DOIs, and return the report plus the DOI list. First run one unpaid Task, then enable
    `PAID_TASKS_ENABLED=true` and complete one paid Task. Save the Task ID and payment tx hash.
+   **Code done, registration done, first Task blocked (2026-10-30):** `cardano/research-agent/` + `cardano/src/research/`;
+   Vendor `Citation Escrow`, Coworker `01a18d05-9815-71fd-8eb2-621999aac09c` registered on preprod with its runtime key.
+   The TUM Workspace access request is `PENDING` (a Workspace admin must approve it) and the preprod personal-workspace
+   route answers 404, so no Task could be created yet. No model-provider key is configured either: the worker runs
+   with `RESEARCH_MODE=fixture` (saved report, real signed proofs) until one is set. Paid Tasks also need a Masumi
+   Payment Service (not set up; no Docker on this machine, Postgres is available).
 3. **Hook the proofs in.** After the agent writes the report, call the API3 side's scripts (or the `/verify` endpoint)
    to prove each DOI on `CitationEscrow`, then submit the result to Masumi with the EVM `jobId` in it.
+   **Done** (`cardano/src/research/agent.ts`, `cardano/src/evm/citation-escrow.ts`): per DOI → free OpenAlex
+   pre-check → signed proof (fixture / live aUSD / paid x402) → `createJob(amount 0)` + `deliver` + `proveSource`
+   once `CITATION_ESCROW_ADDRESS` and `RESEARCHER_EVM_PRIVATE_KEY` are set; the Masumi result carries the report
+   hash, external ref, every proof and the EVM job id. Needs from the API3 side: the deployed address, the
+   `externalRef` parameter on `createJob` (the ABI in `citation-escrow.ts` is the current one), and a funded
+   researcher key on Base Sepolia.
 4. **Hirer agent.** Before Masumi's `unlockTime`, read `isFullyProven(jobId)`; if false, request a refund.
+   **Done** (`cardano/src/cli/hirer.ts`): creates the Task, waits, re-checks every Airnode signature itself (catches
+   the tampered-proof demo), reads `isFullyProven` when deployed, then pays (no action) or requests the refund.
    **Refund path done and proven on preprod** (`cardano/`, no Masumi Payment Service needed): the hirer signs
    `SetRefundRequested` itself (`npm run escrow -- request <lockTxHash>`). Once a result is submitted this moves the
    escrow to `Disputed`; the honest seller accepts (`authorize`) and the hirer withdraws (`withdraw`) — three tx
@@ -134,6 +148,11 @@ compare with the hard-coded signer; request DOIs as `doi:<lowercase doi>`.
    for the result hash → check the delivered report against it → verdict → refund or let it pay out, streamed as
    tagged events for the dashboard. Proven end to end in 2.5 min. The verdict source is pluggable; still to add:
    read `isFullyProven(jobId)` from `CitationEscrow` once it is deployed (send us the address).
+
+5. **Dashboard.** Done: the root Next.js app runs the research agent and the hirer as child processes of `cardano/`
+   (`src/lib/agent/workflows/citation-escrow.ts`), streams their reasoning into the terminal, lists every Cardano
+   transaction in the proof table and confirms it through Blockfrost; the balance card reads the Masumi escrow address
+   live. With the demo fallback on it replays the real preprod hashes from `src/config/cardano-proofs.ts`.
 
 ## API3 milestones, in order
 

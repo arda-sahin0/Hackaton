@@ -92,6 +92,58 @@ can stream the same loop (`runHirerJob(..., { onEvent })` in `src/hirer/hirer.ts
 | Seller authorizes refund | [`de100c97…`](https://preprod.cardanoscan.io/transaction/de100c97c324eb28a7309b92a4197488f19b8aed87e3068c187709f004dc5860) |
 | Hirer withdraws refund | [`6125026f…`](https://preprod.cardanoscan.io/transaction/6125026f5dc002f8923aca88875ecf0b88b9fa5a20ec8fcb76ed93fed319281e) |
 
+## Research agent — a Masumi/Sokosumi Coworker that proves its citations
+
+The seller is a Sokosumi Coworker built on the [TUM quickstart](https://github.com/masumi-network/tum-hackathon-quickstart)
+(a sibling clone, not vendored). Its instructions and the proof pipeline live here; `setup.sh` wires them in.
+
+```sh
+git clone https://github.com/masumi-network/tum-hackathon-quickstart.git ../tum-hackathon-quickstart
+(cd ../tum-hackathon-quickstart && npm ci && cp .env.example .env && chmod 600 .env)
+sh research-agent/setup.sh          # copies instructions.md, patches worker.mjs (idempotent)
+```
+
+In the quickstart `.env`: `COWORKER_ID`, `SOKOSUMI_ORGANIZATION_ID` + `_SLUG` (TUM Workspace), the model
+provider (`ZAI_*`, any OpenAI-compatible endpoint) and `RESEARCH_MODULE=<this repo>/cardano/src/research/agent.ts`.
+Then `npm start` (Eve) and `npm run worker` in two terminals; create a Task with
+`sokosumi --preprod tasks create --organization-slug <slug> --coworker-id <id> --name … --description … --status READY --json`.
+
+What happens per Task (`src/research/agent.ts`, `withProofs`):
+
+1. the model writes the report (or, with `RESEARCH_MODE=fixture`, a saved report is replayed — demo safety, no model key needed);
+2. every cited DOI is pre-checked on OpenAlex for free (cached in `.cache/`), so unknown or retracted DOIs cost nothing;
+3. each DOI gets a signed Airnode proof — replayed fixture, live aUSD lookup, or paid over Cardano x402 via `/verify`
+   (`RESEARCH_PAY_VERIFY=true`, one preprod tx per DOI from `SELLER_MNEMONIC`);
+4. when `CITATION_ESCROW_ADDRESS` is set, the proofs are recorded on Base Sepolia (`createJob` with amount 0,
+   `deliver(reportHash, dois)`, `proveSource` per DOI) with `externalRef = keccak256(<Task ID>)`;
+5. the Masumi result = report + `## Verification` + a JSON block (report hash, external ref, per-DOI proof, EVM job).
+
+`RESEARCH_CHEAT=retracted|tamper` runs the cheating twin for the demo (cites a retracted paper / forges
+`is_retracted=false` in signed data). Try it without Sokosumi: `npm run research -- "<brief>" [externalRef]`.
+
+Registered on preprod (IDs are public): Vendor **Citation Escrow** `01a18d04-27d3-76c6-ae83-b8ef6dbfab51`,
+Coworker **Research Agent (citation-verified)** `01a18d05-9815-71fd-8eb2-621999aac09c`, TUM Workspace
+`tum-hackathon-u4ve65`. Paid Tasks additionally need a Masumi Payment Service (see the quickstart README).
+
+## Hirer agent
+
+```sh
+npm run hirer -- create "<brief>" [minSources]      # create the Task, wait, verify, decide
+npm run hirer -- check  <taskId> [lockTxHash]       # re-evaluate a Task; with a lock tx, request the refund
+npm run hirer -- verify <resultFile> [lockTxHash]   # re-check a saved result (no Sokosumi needed)
+```
+
+The hirer never trusts the seller's verdict: it recovers every Airnode signature and request hash itself, reads
+`CitationEscrow.isFullyProven` when deployed, and only then decides — all proven → Masumi releases the ADA after the
+dispute window; otherwise → `SetRefundRequested` before `unlockTime` (`src/refund.ts`). Decisions are appended to
+`.local/hirer-events.jsonl`, the feed of the dashboard terminal.
+
+## Dashboard
+
+The Next.js command center at the repo root runs this package as child processes (`src/lib/agent/workflows/citation-escrow.ts`):
+pick the seller identity, press **Hire & Verify**, and the terminal streams the research agent, the hirer's re-check
+and the settlement; the proof table lists each Cardano transaction and confirms it through Blockfrost.
+
 ## Files
 
 - `src/escrow.ts` — escrow address, validator script, slot-time rules, escrow tracking.
@@ -101,6 +153,11 @@ can stream the same loop (`runHirerJob(..., { onEvent })` in `src/hirer/hirer.ts
 - `src/cli/pay-verify.ts` — an agent paying the verifier, signing server-side.
 - `src/hirer/hirer.ts`, `src/hirer/verdict.ts`, `src/cli/hire.ts` — the hirer agent loop.
 - `src/x402-client.ts` — paying x402 offers from a seed phrase (plain payments and escrow locks).
+- `src/verify/openalex-precheck.ts`, `src/verify/x402-client.ts` — free pre-check with cache; the paid `/verify` client built on `src/x402-client.ts`.
+- `src/research/agent.ts`, `parse.ts`, `fixtures.ts` — the research agent's proof pipeline (`withProofs`).
+- `src/evm/citation-escrow.ts` — CitationEscrow calls on Base Sepolia (viem), off until the contract is deployed.
+- `src/cli/research.ts`, `src/cli/hirer.ts` — local pipeline run; the Sokosumi-Task hirer (`hirer`), complementing the Masumi x402 hirer loop (`hire`).
+- `research-agent/instructions.md`, `research-agent/setup.sh` — the Coworker's instructions and quickstart wiring.
 - `contracts/payment-v2.plutus.json` — Masumi's validator, vendored unmodified (MIT, see `NOTICE.md`).
 
 Escrow rules follow Masumi's validator `vested_pay.ak` (cited as `ak:N` in the code).
