@@ -64,7 +64,8 @@ npm run hire -- --task "text" [--verdict citations|pass|fail] [--seller-accepts]
 2. **Watch:** follows the escrow until the agent puts its result hash on chain, fetches the result
    and checks it matches that hash (MIP-004 `sha256(identifier;result)`).
 3. **Decide:** `citations` (default) pays `/verify` for every DOI in the report and fails on a
-   retracted or unprovable source; `pass` / `fail` force a verdict for testing. Next: read the API3
+   retracted or unprovable source; `proofs` re-checks the signed proofs our research agent ships inside its
+   report (no fee, `src/hirer/proof-check.ts`); `pass` / `fail` force a verdict for testing. Next: read the API3
    side's `CitationEscrow.isFullyProven(jobId)` on Base Sepolia.
 4. **Act:** pass → nothing on chain, the agent collects after `unlockTime`; fail → refund request,
    then withdraw once the seller authorizes. `--seller-accepts` (demo only) also plays the honest

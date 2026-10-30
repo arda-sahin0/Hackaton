@@ -1,9 +1,10 @@
 /**
- * The hirer (buyer) agent: creates a research Task on Sokosumi, waits for the
- * result, re-checks every signed proof itself (never trusting the seller's own
- * verdict), reads CitationEscrow.isFullyProven when the contract is deployed,
- * and decides: all proven -> let Masumi pay the researcher; otherwise -> request
- * a refund on the Masumi escrow before unlockTime.
+ * The hirer (buyer) agent on the Sokosumi side: creates a research Task, waits
+ * for the result, re-checks every signed proof itself (never trusting the
+ * seller's own verdict), reads CitationEscrow.isFullyProven when the contract
+ * is deployed, and decides: all proven -> let Masumi pay the researcher;
+ * otherwise -> request a refund on the Masumi escrow before unlockTime.
+ * (`npm run hire` is the Masumi-native x402 loop; both share hirer/proof-check.ts.)
  *
  *   npm run hirer -- create "<brief>" [minSources]        create, wait, verify, decide
  *   npm run hirer -- check  <taskId> [lockTxHash]        re-evaluate; with a lock tx, act on it
@@ -15,12 +16,9 @@
 import { execFile } from "node:child_process";
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs";
 import { promisify } from "node:util";
-import { verifySignedResponse, type SignedResponse } from "../../../api3evm/src/airnode-v2.ts";
-import { deriveWorkRequestHash, OPENALEX_AIRNODE_V2_ADDRESS, type SignedWork } from "../../../api3evm/src/openalex.ts";
-import { isFullyProven } from "../evm/citation-escrow.ts";
 import { blockfrostFromEnv, clientForKey, explorerTx, makeClient, trackEscrow } from "../escrow.ts";
+import { checkProofs, parseVerification } from "../hirer/proof-check.ts";
 import { createParty } from "../refund.ts";
-import type { Verification } from "../research/agent.ts";
 
 const run = promisify(execFile);
 const env = process.env;
@@ -56,47 +54,12 @@ async function taskResult(taskId: string): Promise<string | undefined> {
   return done?.comment;
 }
 
-/** Independent re-check of the seller's proofs. Returns the number proven and the reasons for the rest. */
-async function recheck(v: Verification): Promise<{ proven: number; total: number; reasons: string[]; chain: boolean | null }> {
-  const reasons: string[] = [];
-  let proven = 0;
-  for (const s of v.sources) {
-    const proof = s.proof as SignedResponse | undefined;
-    if (!proof) { reasons.push(`${s.doi}: no signed proof`); continue; }
-    try {
-      await verifySignedResponse(proof, OPENALEX_AIRNODE_V2_ADDRESS, deriveWorkRequestHash(s.doi));
-      const work = JSON.parse(proof.data) as SignedWork;
-      if (work.is_retracted) { reasons.push(`${s.doi}: retracted`); continue; }
-      proven++;
-      emit("VERIFY", `${s.doi}: Airnode signature valid, not retracted — "${work.title}"`);
-    } catch (error) {
-      const m = error instanceof Error ? error.message : String(error);
-      reasons.push(`${s.doi}: ${m}`);
-      emit("VERIFY", `${s.doi}: REJECTED — ${m}`);
-    }
-  }
-  let chain: boolean | null = null;
-  if ("jobId" in v.evm) {
-    const r = await isFullyProven(BigInt(v.evm.jobId), env);
-    if (typeof r === "boolean") { chain = r; emit("CHAIN", `CitationEscrow.isFullyProven(${v.evm.jobId}) = ${r}`); }
-    else emit("CHAIN", `isFullyProven skipped: ${r.skipped}`);
-  }
-  return { proven, total: v.sources.length, reasons, chain };
-}
-
-function parseVerification(result: string): Verification | null {
-  const block = [...result.matchAll(/```json\s*([\s\S]*?)```/g)].at(-1)?.[1];
-  if (!block) return null;
-  try { return JSON.parse(block) as Verification; } catch { return null; }
-}
 
 async function decide(taskId: string, result: string): Promise<"pay" | "refund"> {
   const v = parseVerification(result);
   if (!v) { emit("ERROR", "result carries no verification block"); return "refund"; }
   emit("AGENT", `result for ${taskId}: ${v.sources.length} cited DOI(s), minSources ${v.minSources}, report hash ${v.reportHash}`);
-  const { proven, total, reasons, chain } = await recheck(v);
-  const enough = proven >= Math.max(1, v.minSources) && proven === total;
-  const ok = chain === null ? enough : chain && enough;
+  const { proven, total, reasons, chain, ok } = await checkProofs(v, (tag, message) => emit(tag, message), env);
   for (const r of reasons) emit("AGENT", `unproven: ${r}`);
   emit("AGENT", ok ? `DECISION: all ${proven}/${total} sources proven → let Masumi release the payment` : `DECISION: ${proven}/${total} proven → request a refund`, { taskId, proven, total, chain });
   return ok ? "pay" : "refund";

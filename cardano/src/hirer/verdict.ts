@@ -5,10 +5,13 @@
  *   fixed      a forced verdict, for testing the payout and refund paths
  *   citations  pay the /verify service for every DOI in the report; fail on a
  *              retracted or unprovable source, or on fewer than `minSources`
- *   (next)     the API3 side's CitationEscrow.isFullyProven(jobId) on Base Sepolia
+ *   proofs     the report carries the research agent's `## Verification` block
+ *              (cardano/src/research/agent.ts): recover every Airnode signature
+ *              ourselves and read CitationEscrow.isFullyProven when deployed
  */
 import { payOnceWithRetry, settlementTx } from "../x402-client.ts";
 import type { Emit } from "./hirer.ts";
+import { checkProofs, parseVerification } from "./proof-check.ts";
 
 export interface Verdict {
   verdict: "pass" | "fail";
@@ -52,3 +55,12 @@ export function citationVerdict(opts: { verifierUrl: string; payingFetch: typeof
     return { verdict: reasons.length ? "fail" : "pass", reasons, paidTxs };
   };
 }
+
+/** The verdict for reports produced by our research agent: no fee, the proofs travel with the report. */
+export const signedProofVerdict = (minSources: number): VerdictSource => async (report, emit) => {
+  const v = parseVerification(report);
+  if (!v) return { verdict: "fail", reasons: ["report carries no verification block"], paidTxs: [] };
+  emit("VERIFY", `Report cites ${v.sources.length} DOI(s) with signed proofs; ${Math.max(minSources, v.minSources)} required; re-checking every signature`);
+  const check = await checkProofs({ ...v, minSources: Math.max(minSources, v.minSources) }, emit);
+  return { verdict: check.ok ? "pass" : "fail", reasons: check.reasons, paidTxs: [] };
+};
