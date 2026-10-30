@@ -88,8 +88,14 @@ npm run hire -- --task "text" [--verdict citations|pass|fail] [--seller-accepts]
    seller with `SELLER_MNEMONIC`, so the whole refund path runs in one command.
 
 Each step is emitted as an event with the dashboard terminal's tags (`AGENT`, `TOOL`, `ORACLE`,
-`VERIFY`, `SIGNING`, `CHAIN`, `VERIFIED`, `DONE`, `ERROR`) and its explorer link, so the dashboard
+`SIGNING`, `CHAIN`, `VERIFIED`, `DONE`, `ERROR`) and its explorer link, so the dashboard
 can stream the same loop (`runHirerJob(..., { onEvent })` in `src/hirer/hirer.ts`).
+
+## Service for the dashboard
+
+`npm run service` (port 4040) runs the hirer and streams every step in the dashboard's event format
+(`POST /runs`, `GET /runs`, `GET /runs/:id`), with a demo-fallback replay of a recorded run. See
+[`../docs/CARDANO_SERVICE.md`](../docs/CARDANO_SERVICE.md).
 
 ## Proven on preprod (2026-10-30)
 
@@ -169,6 +175,7 @@ and the settlement; the proof table lists each Cardano transaction and confirms 
 - `src/verify/server.ts`, `src/verify/proof.ts` — the paid citation verifier.
 - `src/cli/pay-verify.ts` — an agent paying the verifier, signing server-side.
 - `src/hirer/hirer.ts`, `src/hirer/verdict.ts`, `src/cli/hire.ts` — the hirer agent loop.
+- `src/service/server.ts`, `src/service/replay.ts` — the dashboard service and its demo-fallback replay.
 - `src/x402-client.ts` — paying x402 offers from a seed phrase (plain payments and escrow locks).
 - `src/verify/openalex-precheck.ts`, `src/verify/x402-client.ts` — free pre-check with cache; the paid `/verify` client built on `src/x402-client.ts`.
 - `src/research/agent.ts`, `parse.ts`, `fixtures.ts` — the research agent's proof pipeline (`withProofs`).

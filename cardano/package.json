@@ -15,7 +15,8 @@
     "pay-verify": "node --env-file-if-exists=.env src/cli/pay-verify.ts",
     "hire": "node --env-file-if-exists=.env src/cli/hire.ts",
     "research": "node --env-file-if-exists=.env src/cli/research.ts",
-    "hirer": "node --env-file-if-exists=.env src/cli/hirer.ts"
+    "hirer": "node --env-file-if-exists=.env src/cli/hirer.ts",
+    "service": "node --env-file-if-exists=.env src/service/server.ts"
   },
   "dependencies": {
     "@evolution-sdk/evolution": "0.5.13",

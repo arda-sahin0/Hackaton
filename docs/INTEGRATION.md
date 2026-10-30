@@ -103,6 +103,12 @@ Every component passes proofs around in the format that `pnpm fetch-work` prints
 Rules: never re-serialise `data` (send it as the exact bytes, `toHex(data)`); never trust the `airnode` field, always
 compare with the hard-coded signer; request DOIs as `doi:<lowercase doi>`.
 
+## Dashboard ↔ Cardano
+
+The dashboard drives the Cardano side through a small service (`cd cardano && npm run service`, port 4040) that streams
+each hirer run in the dashboard's existing event format. Endpoints, event format and the hook change:
+[`CARDANO_SERVICE.md`](CARDANO_SERVICE.md).
+
 ## Cardano milestones, in order
 
 1. **Qualify first (paid x402 request).** Start from the Cardano x402-express template

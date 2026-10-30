@@ -18,7 +18,8 @@ import { createParty } from "../refund.ts";
 import { settlementTx } from "../x402-client.ts";
 import type { VerdictSource } from "./verdict.ts";
 
-export type Tag = "AGENT" | "TOOL" | "ORACLE" | "VERIFY" | "SIGNING" | "CHAIN" | "VERIFIED" | "ERROR" | "DONE";
+/** The dashboard terminal's levels (src/lib/agent/types.ts AgentLogLevel). */
+export type Tag = "AGENT" | "TOOL" | "ORACLE" | "SIGNING" | "CHAIN" | "VERIFIED" | "ERROR" | "DONE";
 export interface HirerEvent { at: string; tag: Tag; message: string; txHash?: string; explorerUrl?: string }
 export type Emit = (tag: Tag, message: string, txHash?: string) => void;
 

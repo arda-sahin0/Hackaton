@@ -22,7 +22,7 @@ export interface Verdict {
 export type VerdictSource = (report: string, emit: Emit) => Promise<Verdict>;
 
 export const fixedVerdict = (verdict: "pass" | "fail"): VerdictSource => async (_report, emit) => {
-  emit("VERIFY", `Forced verdict for this test run: ${verdict.toUpperCase()}`);
+  emit("TOOL", `Forced verdict for this test run: ${verdict.toUpperCase()}`);
   return { verdict, reasons: [`forced ${verdict}`], paidTxs: [] };
 };
 
@@ -33,7 +33,7 @@ export const extractDois = (text: string) =>
 export function citationVerdict(opts: { verifierUrl: string; payingFetch: typeof fetch; minSources: number }): VerdictSource {
   return async (report, emit) => {
     const dois = extractDois(report);
-    emit("VERIFY", `Report cites ${dois.length} DOI(s); ${opts.minSources} required`);
+    emit("TOOL", `Report cites ${dois.length} DOI(s); ${opts.minSources} required`);
     const reasons: string[] = [];
     const paidTxs: string[] = [];
     if (dois.length < opts.minSources) reasons.push(`only ${dois.length} DOI(s) cited, ${opts.minSources} required`);
@@ -46,7 +46,7 @@ export function citationVerdict(opts: { verifierUrl: string; payingFetch: typeof
       if (tx) paidTxs.push(tx);
       if (!response.ok) {
         reasons.push(`${doi}: no signed proof (${body.error ?? `HTTP ${response.status}`})`);
-        emit("VERIFY", `${doi} → UNPROVEN (${body.error ?? response.status})`, tx);
+        emit("TOOL", `${doi} → UNPROVEN (${body.error ?? response.status})`, tx);
         continue;
       }
       emit("ORACLE", `${doi} → ${String(body.verdict).toUpperCase()} — "${body.work?.title ?? "?"}" (API3 signature checked off-chain)`, tx);
@@ -60,7 +60,8 @@ export function citationVerdict(opts: { verifierUrl: string; payingFetch: typeof
 export const signedProofVerdict = (minSources: number): VerdictSource => async (report, emit) => {
   const v = parseVerification(report);
   if (!v) return { verdict: "fail", reasons: ["report carries no verification block"], paidTxs: [] };
-  emit("VERIFY", `Report cites ${v.sources.length} DOI(s) with signed proofs; ${Math.max(minSources, v.minSources)} required; re-checking every signature`);
-  const check = await checkProofs({ ...v, minSources: Math.max(minSources, v.minSources) }, emit);
+  emit("TOOL", `Report cites ${v.sources.length} DOI(s) with signed proofs; ${Math.max(minSources, v.minSources)} required; re-checking every signature`);
+  // checkProofs logs VERIFY lines; the dashboard terminal shows verification steps as TOOL.
+  const check = await checkProofs({ ...v, minSources: Math.max(minSources, v.minSources) }, (tag, message) => emit(tag === "VERIFY" ? "TOOL" : tag, message));
   return { verdict: check.ok ? "pass" : "fail", reasons: check.reasons, paidTxs: [] };
 };
