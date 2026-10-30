@@ -13,7 +13,8 @@
     "typecheck": "tsc",
     "verify-server": "node --env-file-if-exists=.env src/verify/server.ts",
     "pay-verify": "node --env-file-if-exists=.env src/cli/pay-verify.ts",
-    "hire": "node --env-file-if-exists=.env src/cli/hire.ts"
+    "hire": "node --env-file-if-exists=.env src/cli/hire.ts",
+    "research": "node --env-file-if-exists=.env src/cli/research.ts"
   },
   "dependencies": {
     "@evolution-sdk/evolution": "0.5.13",
@@ -21,7 +22,8 @@
     "@x402/core": "2.26.0",
     "@x402/express": "2.26.0",
     "@x402/fetch": "2.26.0",
-    "express": "4.22.3"
+    "express": "4.22.3",
+    "viem": "2.57.3"
   },
   "devDependencies": {
     "@types/express": "4.17.25",
