@@ -1,0 +1,23 @@
+{
+  "name": "cardano-escrow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cardano side of the citation-verified research escrow: Masumi V2 escrow (preprod) — track, refund, withdraw",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "escrow": "node --env-file-if-exists=.env src/cli/escrow.ts",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@evolution-sdk/evolution": "0.5.13",
+    "@x402/cardano": "2.26.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3"
+  }
+}

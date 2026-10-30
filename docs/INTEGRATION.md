@@ -117,8 +117,12 @@ compare with the hard-coded signer; request DOIs as `doi:<lowercase doi>`.
    `PAID_TASKS_ENABLED=true` and complete one paid Task. Save the Task ID and payment tx hash.
 3. **Hook the proofs in.** After the agent writes the report, call the API3 side's scripts (or the `/verify` endpoint)
    to prove each DOI on `CitationEscrow`, then submit the result to Masumi with the EVM `jobId` in it.
-4. **Hirer agent.** Before Masumi's `unlockTime`, read `isFullyProven(jobId)`; if false, call
-   `POST /purchase/request-refund`.
+4. **Hirer agent.** Before Masumi's `unlockTime`, read `isFullyProven(jobId)`; if false, request a refund.
+   **Refund path done and proven on preprod** (`cardano/`, no Masumi Payment Service needed): the hirer signs
+   `SetRefundRequested` itself (`npm run escrow -- request <lockTxHash>`). Once a result is submitted this moves the
+   escrow to `Disputed`; the honest seller accepts (`authorize`) and the hirer withdraws (`withdraw`) — three tx
+   hashes in ~3 min. A silent seller leaves it to Masumi's admin keys after `externalDisputeUnlockTime`. Proven tx
+   hashes: [`cardano/README.md`](../cardano/README.md).
 
 ## API3 milestones, in order
 
